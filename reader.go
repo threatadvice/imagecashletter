@@ -460,7 +460,14 @@ func (r *Reader) parseCheckDetailAddendumA() error {
 	cdAddendumA := NewCheckDetailAddendumA()
 	cdAddendumA.Parse(lineOut)
 	if err := cdAddendumA.Validate(); err != nil {
-		return r.error(err)
+		// In FRB compatibility mode, treat a missing ReturnLocationRoutingNumber as a
+		// non-fatal warning so that we can continue processing addenda from vendors
+		// that don't populate this field.
+		if fe, ok := err.(*FieldError); ok && fe.FieldName == "ReturnLocationRoutingNumber" && IsFRBCompatibilityModeEnabled() {
+			r.addWarning(err.Error())
+		} else {
+			return r.error(err)
+		}
 	}
 	entryIndex := len(r.currentCashLetter.currentBundle.GetChecks()) - 1
 	// r.currentCashLetter.currentBundle.Checks[entryIndex].CheckDetailAddendumA = cdAddendumA

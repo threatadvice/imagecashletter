@@ -301,6 +301,34 @@ func TestCheckDetailAddendumAError(t *testing.T) {
 	require.Contains(t, fieldErr.Msg, msgFieldInclusion)
 }
 
+// TestCheckDetailAddendumAMissingReturnLocationRoutingNumberFRB validates that a missing
+// ReturnLocationRoutingNumber is downgraded to a warning under FRB compatibility mode
+func TestCheckDetailAddendumAMissingReturnLocationRoutingNumberFRB(t *testing.T) {
+	t.Setenv(FRBCompatibilityMode, "true")
+	cd := mockCheckDetail()
+	cdAddendumA := mockCheckDetailAddendumA()
+	cdAddendumA.ReturnLocationRoutingNumber = ""
+	cd.AddCheckDetailAddendumA(cdAddendumA)
+	// Blank out ReturnLocationRoutingNumber (positions 3:12) the way a vendor file
+	// omitting the field would, rather than the zero-filled value String() produces.
+	line := cdAddendumA.String()
+	line = line[:3] + strings.Repeat(" ", 9) + line[12:]
+
+	r := NewReader(strings.NewReader(line))
+	clh := mockCashLetterHeader()
+	r.addCurrentCashLetter(NewCashLetter(clh))
+	bh := mockBundleHeader()
+	b := NewBundle(bh)
+	b.AddCheckDetail(cd)
+	r.currentCashLetter.AddBundle(b)
+	r.addCurrentBundle(b)
+	r.line = line
+	err := r.parseLine()
+	require.NoError(t, err)
+	require.Len(t, r.Warnings(), 1)
+	require.Contains(t, r.Warnings()[0], "ReturnLocationRoutingNumber")
+}
+
 // TestCheckDetailAddendumBError validates error flows back from the parser
 func TestCheckDetailAddendumBError(t *testing.T) {
 	cd := mockCheckDetail()
