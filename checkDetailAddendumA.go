@@ -213,6 +213,8 @@ func (cdAddendumA *CheckDetailAddendumA) Validate() error {
 		return &FieldError{FieldName: "BOFDBranchCode",
 			Value: cdAddendumA.BOFDBranchCode, Msg: err.Error()}
 	}
+	// Pre-sanitize to remove non-printable bytes before validation
+	cdAddendumA.PayeeName = sanitizePrintableASCII(cdAddendumA.PayeeName)
 	if err := cdAddendumA.isAlphanumericSpecial(cdAddendumA.PayeeName); err != nil {
 		return &FieldError{FieldName: "PayeeName",
 			Value: cdAddendumA.PayeeName, Msg: err.Error()}
